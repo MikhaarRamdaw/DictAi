@@ -1,0 +1,20 @@
+# Core
+streamlit==1.37.0
+streamlit-mic-recorder==0.0.4
+numpy==1.26.4
+pandas==2.2.2
+joblib==1.4.2
+
+# Machine Learning
+scikit-learn==1.5.1
+faster-whisper==0.10.0
+torch==2.3.1
+torchaudio==2.3.1
+torchvision==0.18.1
+
+# Export
+reportlab==4.2.2
+markdown==3.6
+
+# Testing
+pytest==8.3.2

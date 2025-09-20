@@ -3,14 +3,14 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
+
+import os
 import re
-import io
 import joblib
 import streamlit as st
 import tempfile
 from pathlib import Path
 from typing import List, Dict
-from pydub import AudioSegment
 from streamlit_mic_recorder import mic_recorder
 from faster_whisper import WhisperModel
 from utils.render import render_markdown, render_pdf
@@ -19,6 +19,7 @@ from utils.render import render_markdown, render_pdf
 # Paths & constants
 # -----------------------------
 MODEL_PATH = Path("models/soap.pkl")
+
 LABELS = ["subjective", "objective", "assessment", "plan"]
 
 # -----------------------------
@@ -40,24 +41,15 @@ def load_model():
     return vectorizer, clf
 
 @st.cache_resource
-def get_asr(model_size: str = "medium"):
+def get_asr(model_size: str = "small"):
     """Load Whisper ASR model."""
     return WhisperModel(model_size, device="cpu", compute_type="int8")
 
-def transcribe_audio(file_bytes: bytes, model_size="medium") -> str:
-    """Transcribe audio file (wav/mp3/m4a/ogg/opus) using faster-whisper."""
-    try:
-        # Try decoding any format (including .ogg/.opus from WhatsApp)
-        audio = AudioSegment.from_file(io.BytesIO(file_bytes))
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-            audio.export(tmp.name, format="wav")
-            tmp_path = tmp.name
-    except Exception:
-        # fallback if already a wav/mp3/m4a
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-            tmp.write(file_bytes)
-            tmp_path = tmp.name
-
+def transcribe_audio(file_bytes: bytes, model_size="small") -> str:
+    """Transcribe audio file using faster-whisper."""
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+        tmp.write(file_bytes)
+        tmp_path = tmp.name
     try:
         model = get_asr(model_size)
         segments, _ = model.transcribe(tmp_path, vad_filter=True)
@@ -93,8 +85,8 @@ with st.sidebar:
     st.markdown("3. 🤖 Auto-classify into SOAP")
     st.markdown("4. 📄 Export as PDF/Markdown")
 
-# Select ASR model size (only medium + large for accuracy)
-model_size = st.selectbox("ASR model size", ["medium", "large"], index=0)
+# Select ASR model size
+model_size = st.selectbox("ASR model size", ["tiny", "base", "small", "medium"], index=2)
 
 # ---- Microphone recording
 st.subheader("🎤 Record audio")
@@ -110,7 +102,7 @@ if st.button("Transcribe recording") and rec_bytes:
 
 # ---- File upload
 st.subheader("📁 Or upload audio file")
-audio = st.file_uploader("Upload audio (wav/mp3/m4a/ogg/opus)", type=["wav","mp3","m4a","ogg","opus"])
+audio = st.file_uploader("Upload audio (wav/mp3/m4a)", type=["wav","mp3","m4a"])
 if st.button("Transcribe uploaded file") and audio:
     with st.spinner("Transcribing your file..."):
         raw_text = transcribe_audio(audio.read(), model_size=model_size)
@@ -140,5 +132,6 @@ if raw_text:
 
     # Export options
     st.download_button("⬇️ Download as Markdown", md, file_name="soap_note.md")
+
     pdf_bytes = render_pdf(grouped)
     st.download_button("⬇️ Download as PDF", pdf_bytes, file_name="soap_note.pdf", mime="application/pdf")
